@@ -15,7 +15,7 @@ If {{agentName}} is talking too much, you can choose [IGNORE]
 Your response must include one of the options.`;
 
 export const parseShouldRespondFromText = (
-    text: string,
+    text: string
 ): "RESPOND" | "IGNORE" | "STOP" | null => {
     const match = text
         .split("\n")[0]
@@ -27,12 +27,12 @@ export const parseShouldRespondFromText = (
     return match
         ? (match[0].toUpperCase() as "RESPOND" | "IGNORE" | "STOP")
         : text.includes("RESPOND")
-          ? "RESPOND"
-          : text.includes("IGNORE")
-            ? "IGNORE"
-            : text.includes("STOP")
-              ? "STOP"
-              : null;
+        ? "RESPOND"
+        : text.includes("IGNORE")
+        ? "IGNORE"
+        : text.includes("STOP")
+        ? "STOP"
+        : null;
 };
 
 export const booleanFooter = `Respond with only a YES or a NO.`;
@@ -90,8 +90,11 @@ export function parseJsonArrayFromText(text: string) {
 
     if (jsonBlockMatch) {
         try {
-            // Replace single quotes with double quotes before parsing
-            const normalizedJson = jsonBlockMatch[1].replace(/'/g, '"');
+            // Only replace quotes that are actually being used for string delimitation
+            const normalizedJson = jsonBlockMatch[1].replace(
+                /(?<!\\)'([^']*)'(?=\s*[,}\]])/g,
+                '"$1"'
+            );
             jsonData = JSON.parse(normalizedJson);
         } catch (e) {
             console.error("Error parsing JSON:", e);
@@ -101,13 +104,16 @@ export function parseJsonArrayFromText(text: string) {
 
     // If that fails, try to find an array pattern
     if (!jsonData) {
-        const arrayPattern = /\[\s*['"][^'"]*['"]\s*\]/;
+        const arrayPattern = /\[\s*(['"])(.*?)\1\s*\]/;
         const arrayMatch = text.match(arrayPattern);
 
         if (arrayMatch) {
             try {
-                // Replace single quotes with double quotes before parsing
-                const normalizedJson = arrayMatch[0].replace(/'/g, '"');
+                // Only replace quotes that are actually being used for string delimitation
+                const normalizedJson = arrayMatch[0].replace(
+                    /(?<!\\)'([^']*)'(?=\s*[,}\]])/g,
+                    '"$1"'
+                );
                 jsonData = JSON.parse(normalizedJson);
             } catch (e) {
                 console.error("Error parsing JSON:", e);
@@ -134,31 +140,32 @@ export function parseJsonArrayFromText(text: string) {
  * @returns An object parsed from the JSON string if successful; otherwise, null or the result of parsing an array.
  */
 export function parseJSONObjectFromText(
-    text: string,
+    text: string
 ): Record<string, any> | null {
     let jsonData = null;
-
     const jsonBlockMatch = text.match(jsonBlockPattern);
 
     if (jsonBlockMatch) {
+        const parsingText = normalizeJsonString(jsonBlockMatch[1]);
         try {
-            jsonData = JSON.parse(jsonBlockMatch[1]);
+            jsonData = JSON.parse(parsingText);
         } catch (e) {
             console.error("Error parsing JSON:", e);
             console.error("Text is not JSON", text);
-            return extractAttributes(jsonBlockMatch[1]);
+            return extractAttributes(parsingText);
         }
     } else {
         const objectPattern = /{[\s\S]*?}/;
         const objectMatch = text.match(objectPattern);
 
         if (objectMatch) {
+            const parsingText = normalizeJsonString(objectMatch[0]);
             try {
-                jsonData = JSON.parse(objectMatch[0]);
+                jsonData = JSON.parse(parsingText);
             } catch (e) {
                 console.error("Error parsing JSON:", e);
                 console.error("Text is not JSON", text);
-                return extractAttributes(objectMatch[0]);
+                return extractAttributes(parsingText);
             }
         }
     }
@@ -184,7 +191,7 @@ export function parseJSONObjectFromText(
  */
 export function extractAttributes(
     response: string,
-    attributesToExtract?: string[],
+    attributesToExtract?: string[]
 ): { [key: string]: string | undefined } {
     const attributes: { [key: string]: string | undefined } = {};
 
@@ -198,7 +205,7 @@ export function extractAttributes(
         // Extract only specified attributes
         attributesToExtract.forEach((attribute) => {
             const match = response.match(
-                new RegExp(`"${attribute}"\\s*:\\s*"([^"]*)"`, "i"),
+                new RegExp(`"${attribute}"\\s*:\\s*"([^"]*)"`, "i")
             );
             if (match) {
                 attributes[attribute] = match[1];
@@ -208,6 +215,45 @@ export function extractAttributes(
 
     return attributes;
 }
+
+/**
+ * Normalizes a JSON-like string by correcting formatting issues:
+ * - Removes extra spaces after '{' and before '}'.
+ * - Wraps unquoted values in double quotes.
+ * - Converts single-quoted values to double-quoted.
+ * - Ensures consistency in key-value formatting.
+ * - Normalizes mixed adjacent quote pairs.
+ *
+ * This is useful for cleaning up improperly formatted JSON strings
+ * before parsing them into valid JSON.
+ *
+ * @param str - The JSON-like string to normalize.
+ * @returns A properly formatted JSON string.
+ */
+
+export const normalizeJsonString = (str: string) => {
+    // Remove extra spaces after '{' and before '}'
+    str = str.replace(/\{\s+/, '{').replace(/\s+\}/, '}').trim();
+
+    // "key": unquotedValue → "key": "unquotedValue"
+    str = str.replace(
+      /("[\w\d_-]+")\s*: \s*(?!"|\[)([\s\S]+?)(?=(,\s*"|\}$))/g,
+      '$1: "$2"',
+    );
+
+    // "key": 'value' → "key": "value"
+    str = str.replace(
+      /"([^"]+)"\s*:\s*'([^']*)'/g,
+      (_, key, value) => `"${key}": "${value}"`,
+    );
+
+    // "key": someWord → "key": "someWord"
+    str = str.replace(/("[\w\d_-]+")\s*:\s*([A-Za-z_]+)(?!["\w])/g, '$1: "$2"');
+
+    // Replace adjacent quote pairs with a single double quote
+    str = str.replace(/(?:"')|(?:'")/g, '"');
+    return str;
+};
 
 /**
  * Cleans a JSON-like response string by removing unnecessary markers, line breaks, and extra whitespace.
@@ -228,7 +274,7 @@ export function cleanJsonResponse(response: string): string {
 export const postActionResponseFooter = `Choose any combination of [LIKE], [RETWEET], [QUOTE], and [REPLY] that are appropriate. Each action must be on its own line. Your response must only include the chosen actions.`;
 
 export const parseActionResponseFromText = (
-    text: string,
+    text: string
 ): { actions: ActionResponse } => {
     const actions: ActionResponse = {
         like: false,
@@ -267,7 +313,7 @@ export const parseActionResponseFromText = (
  */
 export function truncateToCompleteSentence(
     text: string,
-    maxLength: number,
+    maxLength: number
 ): string {
     if (text.length <= maxLength) {
         return text;

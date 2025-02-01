@@ -209,6 +209,7 @@ export type Models = {
     [ModelProviderName.LLAMACLOUD]: Model;
     [ModelProviderName.TOGETHER]: Model;
     [ModelProviderName.LLAMALOCAL]: Model;
+    [ModelProviderName.LMSTUDIO]: Model;
     [ModelProviderName.GOOGLE]: Model;
     [ModelProviderName.MISTRAL]: Model;
     [ModelProviderName.CLAUDE_VERTEX]: Model;
@@ -246,6 +247,7 @@ export enum ModelProviderName {
     LLAMACLOUD = "llama_cloud",
     TOGETHER = "together",
     LLAMALOCAL = "llama_local",
+    LMSTUDIO = "lmstudio",
     GOOGLE = "google",
     MISTRAL = "mistral",
     CLAUDE_VERTEX = "claude_vertex",
@@ -660,6 +662,7 @@ export enum Clients {
     INSTAGRAM = "instagram",
     SIMSAI = "simsai",
     XMTP = "xmtp",
+    DEVA = "deva",
 }
 
 export interface IAgentConfig {
@@ -772,6 +775,7 @@ export type Character = {
         jeeterInteractionTemplate?: string;
         jeeterMessageHandlerTemplate?: string;
         jeeterShouldRespondTemplate?: string;
+        devaPostTemplate?: string;
     };
 
     /** Character biography */
@@ -1644,7 +1648,6 @@ export enum ActionTimelineType {
     ForYou = "foryou",
     Following = "following",
 }
-
 export enum KnowledgeScope {
     SHARED = "shared",
     PRIVATE = "private",

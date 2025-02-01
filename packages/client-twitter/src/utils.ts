@@ -83,6 +83,7 @@ export async function buildConversationThread(
                     text: currentTweet.text,
                     source: "twitter",
                     url: currentTweet.permanentUrl,
+                    imageUrls: currentTweet.photos.map((p) => p.url) || [],
                     inReplyTo: currentTweet.inReplyToStatusId
                         ? stringToUuid(
                               currentTweet.inReplyToStatusId +
@@ -274,9 +275,11 @@ export async function sendTweet(
         agentId: client.runtime.agentId,
         userId: client.runtime.agentId,
         content: {
+            tweetId: tweet.id,
             text: tweet.text,
             source: "twitter",
             url: tweet.permanentUrl,
+            imageUrls: tweet.photos.map((p) => p.url) || [],
             inReplyTo: tweet.inReplyToStatusId
                 ? stringToUuid(
                       tweet.inReplyToStatusId + "-" + client.runtime.agentId

@@ -12,7 +12,7 @@ import {
     type Action,
 } from "@elizaos/core";
 import { WalletProvider } from "../providers/wallet";
-import { validateMultiversxConfig } from "../enviroment";
+import { validateMultiversxConfig } from "../environment";
 import { transferSchema } from "../utils/schemas";
 import { GraphqlProvider } from "../providers/graphql";
 import { MVX_NETWORK_CONFIG } from "../constants";
@@ -86,15 +86,22 @@ export default {
         }
 
         // Initialize or update state
+        // if (!state) {
+        //     state = (await runtime.composeState(message)) as State;
+        // } else {
+        //     state = await runtime.updateRecentMessageState(state);
+        // }
+
+        let currentState: State;
         if (!state) {
-            state = (await runtime.composeState(message)) as State;
+            currentState = (await runtime.composeState(message)) as State;
         } else {
-            state = await runtime.updateRecentMessageState(state);
+            currentState = await runtime.updateRecentMessageState(state);
         }
 
         // Compose transfer context
         const transferContext = composeContext({
-            state,
+            state: currentState,
             template: transferTemplate,
         });
 
