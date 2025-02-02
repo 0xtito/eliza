@@ -150,12 +150,25 @@ export const PollingResponseSchema = z.object({
     error: PollingErrorSchema,
 });
 
+export const VideoCreationResponseSchema = z.object({
+    data: z.object({
+        id: z.string(),
+    }),
+    requestId: z.string(),
+});
+
+export type VideoCreationResponse = z.infer<typeof VideoCreationResponseSchema>;
+
 export const VideoGenerationErrorSchema = z.object({
     code: z.string(),
     message: z.string(),
     details: ErrorDetailsSchema.optional(),
     requestId: z.string().optional(),
 });
+
+export type VideoGenerationErrorType = z.infer<
+    typeof VideoGenerationErrorSchema
+>;
 
 // Main Video Request Schema
 export const VideoRequestSchema = z.object({
@@ -228,17 +241,11 @@ export const VideoRequestSchema = z.object({
 // Type exports
 export type VideoRequestSchemaType = z.infer<typeof VideoRequestSchema>;
 export type PollingResponseType = z.infer<typeof PollingResponseSchema>;
-export type VideoGenerationErrorType = z.infer<
-    typeof VideoGenerationErrorSchema
->;
-export type VideoGenerationResponse =
-    | PollingResponseType
-    | VideoGenerationErrorType;
 
 // Type guards using Zod
 export const isVideoGenerationError = (
     response: unknown
-): response is VideoGenerationErrorType => {
+): response is VideoGenerationError => {
     return VideoGenerationErrorSchema.safeParse(response).success;
 };
 

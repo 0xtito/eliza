@@ -1,12 +1,22 @@
-import { elizaLogger } from "@elizaos/core";
+import { elizaLogger, type IAgentRuntime } from "@elizaos/core";
 import { getEnvVariable } from "../../../core/src/settings.ts";
-import {
+import type {
     TransitionEffectEnum,
-    VideoRequestSchema,
     VideoRequestSchemaType,
-    VideoGenerationResponse,
-    VideoGenerationError,
+    VideoCreationResponse,
+    VideoGenerationErrorType,
 } from "../types.ts";
+
+import {
+    VideoGenerationError,
+    VideoPollingError,
+    VideoRequestSchema,
+    PollingResponseSchema,
+} from "../types.ts";
+import { validateLongStoriesConfig } from "../environment.ts";
+
+const POLLING_INTERVAL = 5000; // 5 seconds
+const MAX_POLLING_ATTEMPTS = 30; // 2.5 minutes total
 
 interface CreateVideoParams {
     effects: {
@@ -18,9 +28,10 @@ interface CreateVideoParams {
 }
 
 export async function createVideo(
+    runtime: IAgentRuntime,
     prompt: string,
     params: CreateVideoParams
-): Promise<VideoGenerationResponse | VideoGenerationError> {
+): Promise<VideoCreationResponse> {
     const { quality = "medium", effects, motionEnabled = false } = params;
 
     const videoParams: VideoRequestSchemaType = VideoRequestSchema.parse({
@@ -41,6 +52,10 @@ export async function createVideo(
             style: "no_style",
             targetLengthInWords: 55,
         },
+        motionConfig: {
+            enabled: motionEnabled,
+            strength: 3,
+        },
         voiceoverConfig: {
             enabled: true,
             voiceId: "YYHkBdgrAwQWIaH6m2ai",
@@ -50,33 +65,33 @@ export async function createVideo(
             captionsPosition: "bottom",
             captionsStyle: "manuscripts",
         },
-        directorNotes: ``,
     } as VideoRequestSchemaType);
 
     try {
-        const videoServiceUrl = getEnvVariable("VIDEO_SERVICE_URL");
-        const videoServiceApiKey = getEnvVariable("VIDEO_SERVICE_API_KEY");
+        const videoServiceUrl = "https://longstories.ai";
+        const config = await validateLongStoriesConfig(runtime);
 
-        if (!videoServiceUrl || !videoServiceApiKey) {
+        if (!config.LONG_STORIES_API_KEY) {
             throw new VideoGenerationError({
                 code: "VIDEO_SERVICE_ERROR",
-                message: "Video service URL or API key is not set",
+                message: "Longstories API key is not set",
             });
         }
-
         // Your existing video generation code here
         const response = await fetch(`${videoServiceUrl}/api/v1/short`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "x-api-key": videoServiceApiKey,
+                "x-api-key": config.LONG_STORIES_API_KEY,
             },
             body: JSON.stringify(videoParams),
         });
 
-        console.log("response", response);
+        const successData = (await response.json()) as VideoCreationResponse;
 
-        const successData = (await response.json()) as VideoGenerationResponse;
+        elizaLogger.debug("Video generation success data", {
+            successData,
+        });
 
         return successData;
     } catch (error) {
@@ -94,4 +109,93 @@ export async function createVideo(
             message: "Video generation failed",
         });
     }
+}
+
+export async function pollVideoStatus(
+    runtime: IAgentRuntime,
+    runId: string
+): Promise<string> {
+    let attempts = 0;
+
+    while (attempts < MAX_POLLING_ATTEMPTS) {
+        attempts++;
+
+        try {
+            const videoServiceUrl = "https://longstories.ai";
+            const config = await validateLongStoriesConfig(runtime);
+
+            if (!config.LONG_STORIES_API_KEY) {
+                throw new VideoGenerationError({
+                    code: "VIDEO_SERVICE_ERROR",
+                    message: "Longstories API key is not set",
+                });
+            }
+            const response = await fetch(
+                `${videoServiceUrl}/api/v1/short?runId=${runId}`,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-api-key": config.LONG_STORIES_API_KEY,
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new VideoPollingError({
+                    code: "POLLING_SERVICE_ERROR",
+                    message: `API responded with ${response.status}`,
+                    pollCount: attempts,
+                });
+            }
+
+            const rawData = await response.json();
+
+            elizaLogger.debug("Video polling response", {
+                runId,
+                rawData,
+            });
+
+            const parsedResponse = PollingResponseSchema.parse(rawData.data);
+
+            if (parsedResponse.error) {
+                throw new VideoGenerationError({
+                    code: "VIDEO_SERVICE_ERROR",
+                    message: parsedResponse.error.message,
+                    details: parsedResponse.error.details,
+                });
+            }
+
+            if (parsedResponse.isCompleted) {
+                if (parsedResponse.output?.url) {
+                    return parsedResponse.output.url;
+                }
+                throw new VideoGenerationError({
+                    code: "MISSING_OUTPUT_URL",
+                    message: "Video generation completed but no URL found",
+                });
+            }
+
+            await new Promise((resolve) =>
+                setTimeout(resolve, POLLING_INTERVAL)
+            );
+        } catch (error) {
+            if (error instanceof VideoGenerationError) throw error;
+
+            throw new VideoPollingError({
+                code: "POLLING_NETWORK_ERROR",
+                message: "Failed to poll video status",
+                details:
+                    error instanceof Error
+                        ? { error: error.message }
+                        : undefined,
+                pollCount: attempts,
+            });
+        }
+    }
+
+    throw new VideoPollingError({
+        code: "POLLING_MAX_RETRIES_EXCEEDED",
+        message: "Video generation timed out",
+        pollCount: attempts,
+    });
 }

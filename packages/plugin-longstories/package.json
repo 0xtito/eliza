@@ -1,5 +1,5 @@
 {
-    "name": "@elizaos/longstories",
+    "name": "@elizaos/plugin-longstories",
     "version": "0.1.9-alpha.1",
     "type": "module",
     "main": "dist/index.js",

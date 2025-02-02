@@ -15,5 +15,9 @@ export default defineConfig({
         "https",
         "http",
         "agentkeepalive",
+        "zod",
+        "os",
+        "pino",
+        "pino-pretty",
     ],
 });
