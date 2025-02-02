@@ -27,6 +27,7 @@ import { PrimusAdapter } from "@elizaos/plugin-primus";
 import { lightningPlugin } from "@elizaos/plugin-lightning";
 import { elizaCodeinPlugin, onchainJson } from "@elizaos/plugin-iq6900";
 import { dcapPlugin } from "@elizaos/plugin-dcap";
+import { defaultCharacter } from "./characters/longstories";
 import {
     AgentRuntime,
     CacheManager,
@@ -35,7 +36,7 @@ import {
     type Client,
     Clients,
     DbCacheAdapter,
-    defaultCharacter,
+    // defaultCharacter,
     elizaLogger,
     FsCacheAdapter,
     type IAgentRuntime,
