@@ -171,72 +171,76 @@ export type VideoGenerationErrorType = z.infer<
 >;
 
 // Main Video Request Schema
-export const VideoRequestSchema = z.object({
-    prompt: z.string(),
-    script: z.string().optional(),
-    scriptConfig: z
-        .object({
-            style: ScriptStyleEnum.default("default"),
-            targetLengthInWords: z.number().min(1).max(200).default(70),
-        })
-        .optional(),
-    directorNotes: z.string().optional(),
-    shortRequestEnhancer: z.boolean().default(false),
-    imageConfig: z
-        .object({
-            model: ImageModelEnum.default("flux_schnell"),
-            recraftStyle: RecraftStyleEnum.optional(),
-            loraConfig: z
-                .object({
-                    loraSlug: LoraSlugEnum,
-                })
-                .optional(),
-        })
-        .optional(),
-    voiceoverConfig: z
-        .object({
-            enabled: z.boolean().default(true),
-            voiceId: z.string().default("zWDA589rUKXuLnPRDtAG"),
-        })
-        .optional(),
-    captionsConfig: z
-        .object({
-            captionsEnabled: z.boolean().default(true),
-            captionsStyle: CaptionsStyleEnum.default("default"),
-            captionsPosition: z
-                .enum(["top", "center", "bottom"])
-                .default("bottom"),
-        })
-        .optional(),
-    effectsConfig: z
-        .object({
-            transition: TransitionEffectEnum.default("fade"),
-            floating: z.boolean().default(true),
-        })
-        .optional(),
-    musicConfig: z
-        .object({
-            enabled: z.boolean().default(false),
-            musicSlug: MusicSlugEnum.default(""),
-            volume: z.number().min(0).max(1).default(0.3),
-            loop: z.boolean().default(true),
-        })
-        .optional(),
-    motionConfig: z
-        .object({
-            enabled: z.boolean().default(false),
-            strength: z.number().min(1).max(10).default(3),
-        })
-        .optional(),
-    templateConfig: z
-        .object({
-            templateId: z
-                .enum(["none", "longstories", "darksun"])
-                .default("darksun"),
-        })
-        .optional(),
-    quality: z.enum(["high", "medium", "low"]).default("medium"),
-});
+export const VideoRequestSchema = z
+    .object({
+        prompt: z.string().optional(),
+        script: z.string().optional(),
+        scriptConfig: z
+            .object({
+                style: ScriptStyleEnum.default("default"),
+                targetLengthInWords: z.number().min(1).max(200).default(70),
+            })
+            .optional(),
+        directorNotes: z.string().optional(),
+        shortRequestEnhancer: z.boolean().default(false),
+        imageConfig: z
+            .object({
+                model: ImageModelEnum.default("flux_schnell"),
+                recraftStyle: RecraftStyleEnum.optional(),
+                loraConfig: z
+                    .object({
+                        loraSlug: LoraSlugEnum,
+                    })
+                    .optional(),
+            })
+            .optional(),
+        voiceoverConfig: z
+            .object({
+                enabled: z.boolean().default(true),
+                voiceId: z.string().default("zWDA589rUKXuLnPRDtAG"),
+            })
+            .optional(),
+        captionsConfig: z
+            .object({
+                captionsEnabled: z.boolean().default(true),
+                captionsStyle: CaptionsStyleEnum.default("default"),
+                captionsPosition: z
+                    .enum(["top", "center", "bottom"])
+                    .default("bottom"),
+            })
+            .optional(),
+        effectsConfig: z
+            .object({
+                transition: TransitionEffectEnum.default("fade"),
+                floating: z.boolean().default(true),
+            })
+            .optional(),
+        musicConfig: z
+            .object({
+                enabled: z.boolean().default(false),
+                musicSlug: MusicSlugEnum.default(""),
+                volume: z.number().min(0).max(1).default(0.3),
+                loop: z.boolean().default(true),
+            })
+            .optional(),
+        motionConfig: z
+            .object({
+                enabled: z.boolean().default(false),
+                strength: z.number().min(1).max(10).default(3),
+            })
+            .optional(),
+        templateConfig: z
+            .object({
+                templateId: z
+                    .enum(["none", "longstories", "darksun"])
+                    .default("darksun"),
+            })
+            .optional(),
+        quality: z.enum(["high", "medium", "low"]).default("medium"),
+    })
+    .refine((data) => data.prompt !== undefined || data.script !== undefined, {
+        message: "Either prompt or script must be provided",
+    });
 
 // Type exports
 export type VideoRequestSchemaType = z.infer<typeof VideoRequestSchema>;

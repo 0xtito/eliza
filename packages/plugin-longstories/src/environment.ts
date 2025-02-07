@@ -3,12 +3,18 @@ import { z, ZodError } from "zod";
 
 const POLLING_INTERVAL = 5000; // 5 seconds
 const MAX_POLLING_ATTEMPTS = 30; // 2.5 minutes total
+const LONG_STORIES_MAX_SCRIPT_LENGTH = 55;
 
 const longStoriesEnvSchema = z.object({
     LONG_STORIES_API_KEY: z.string(),
     LONG_STORIES_WITH_MOTION: z.boolean().default(false),
-    POLLING_INTERVAL: z.number().default(POLLING_INTERVAL),
-    MAX_POLLING_ATTEMPTS: z.number().default(MAX_POLLING_ATTEMPTS),
+    LONG_STORIES_WITH_VIDEO_MOTION: z.boolean().default(false),
+    LONG_STORIES_POLLING_INTERVAL: z.number().default(POLLING_INTERVAL),
+    LONG_STORIES_MAX_POLLING_ATTEMPTS: z.number().default(MAX_POLLING_ATTEMPTS),
+    LONG_STORIES_MAX_SCRIPT_LENGTH: z
+        .number()
+        .default(LONG_STORIES_MAX_SCRIPT_LENGTH),
+    LONG_STORIES_WITH_DIRECTOR_NOTES: z.boolean().default(false),
 });
 
 export type LongStoriesConfig = z.infer<typeof longStoriesEnvSchema>;
@@ -25,16 +31,31 @@ export async function validateLongStoriesConfig(
                 runtime.getSetting("LONG_STORIES_WITH_MOTION") ||
                     process.env.LONG_STORIES_WITH_MOTION
             ) ?? false,
-        POLLING_INTERVAL: safeParseInt(
-            runtime.getSetting("POLLING_INTERVAL") ||
-                process.env.POLLING_INTERVAL,
+        LONG_STORIES_WITH_VIDEO_MOTION:
+            parseBooleanFromText(
+                runtime.getSetting("LONG_STORIES_WITH_VIDEO_MOTION") ||
+                    process.env.LONG_STORIES_WITH_VIDEO_MOTION
+            ) ?? false,
+        LONG_STORIES_POLLING_INTERVAL: safeParseInt(
+            runtime.getSetting("LONG_STORIES_POLLING_INTERVAL") ||
+                process.env.LONG_STORIES_POLLING_INTERVAL,
             POLLING_INTERVAL
         ),
-        MAX_POLLING_ATTEMPTS: safeParseInt(
-            runtime.getSetting("MAX_POLLING_ATTEMPTS") ||
-                process.env.MAX_POLLING_ATTEMPTS,
+        LONG_STORIES_MAX_POLLING_ATTEMPTS: safeParseInt(
+            runtime.getSetting("LONG_STORIES_MAX_POLLING_ATTEMPTS") ||
+                process.env.LONG_STORIES_MAX_POLLING_ATTEMPTS,
             MAX_POLLING_ATTEMPTS
         ),
+        LONG_STORIES_MAX_SCRIPT_LENGTH: safeParseInt(
+            runtime.getSetting("LONG_STORIES_MAX_SCRIPT_LENGTH") ||
+                process.env.LONG_STORIES_MAX_SCRIPT_LENGTH,
+            LONG_STORIES_MAX_SCRIPT_LENGTH
+        ),
+        LONG_STORIES_WITH_DIRECTOR_NOTES:
+            parseBooleanFromText(
+                runtime.getSetting("LONG_STORIES_WITH_DIRECTOR_NOTES") ||
+                    process.env.LONG_STORIES_WITH_DIRECTOR_NOTES
+            ) ?? false,
     };
 
     try {
