@@ -5,7 +5,7 @@ import {
     getEmbeddingType,
     getEmbeddingZeroVector,
 } from "../src/embedding.ts";
-import { type IAgentRuntime, ModelProviderName } from "../types.ts";
+import { type IAgentRuntime, ModelProviderName } from "../src/types.ts";
 import settings from "../src/settings.ts";
 
 // Mock environment-related settings
@@ -38,7 +38,7 @@ vi.mock("fastembed", () => ({
 
 // Mock global fetch for remote embedding requests
 const mockFetch = vi.fn();
-(global as any).fetch = mockFetch;
+global.fetch = mockFetch;
 
 describe("Embedding Module", () => {
     let mockRuntime: IAgentRuntime;

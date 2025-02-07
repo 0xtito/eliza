@@ -1,16 +1,15 @@
 import { embed } from "./embedding.ts";
 import { splitChunks } from "./generation.ts";
 import elizaLogger from "./logger.ts";
-import {
-    type IAgentRuntime,
-    type IRAGKnowledgeManager,
-    type RAGKnowledgeItem,
-    type UUID,
-    KnowledgeScope,
+import type {
+    IAgentRuntime,
+    IRAGKnowledgeManager,
+    RAGKnowledgeItem,
+    UUID,
 } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
-import { existsSync } from "fs";
-import { join } from "path";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * Manage knowledge in the database.
@@ -48,7 +47,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     }
 
     private readonly defaultRAGMatchThreshold = 0.85;
-    private readonly defaultRAGMatchCount = 5;
+    private readonly defaultRAGMatchCount = 8;
 
     /**
      * Common English stop words to filter out from query analysis
@@ -108,7 +107,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         return query
             .toLowerCase()
             .split(" ")
-            .filter((term) => term.length > 3) // Filter very short words
+            .filter((term) => term.length > 2) // Filter very short words
             .filter((term) => !this.stopWords.has(term)); // Filter stop words
     }
 
@@ -146,19 +145,34 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     }
 
     private hasProximityMatch(text: string, terms: string[]): boolean {
-        const words = text.toLowerCase().split(" ");
-        const positions = terms
-            .map((term) => words.findIndex((w) => w.includes(term)))
-            .filter((pos) => pos !== -1);
-
-        if (positions.length < 2) return false;
-
-        // Check if any matches are within 5 words of each other
-        for (let i = 0; i < positions.length - 1; i++) {
-            if (Math.abs(positions[i] - positions[i + 1]) <= 5) {
+        if (!text || !terms.length) {
+            return false;
+        }
+    
+        const words = text.toLowerCase().split(" ").filter(w => w.length > 0);
+        
+        // Find all positions for each term (not just first occurrence)
+        const allPositions = terms.flatMap(term => 
+            words.reduce((positions, word, idx) => {
+                if (word.includes(term)) positions.push(idx);
+                return positions;
+            }, [] as number[])
+        ).sort((a, b) => a - b);
+    
+        if (allPositions.length < 2) return false;
+    
+        // Check proximity
+        for (let i = 0; i < allPositions.length - 1; i++) {
+            if (Math.abs(allPositions[i] - allPositions[i + 1]) <= 5) {
+                elizaLogger.debug("[Proximity Match]", {
+                    terms,
+                    positions: allPositions,
+                    matchFound: `${allPositions[i]} - ${allPositions[i + 1]}`
+                });
                 return true;
             }
         }
+    
         return false;
     }
 
@@ -485,7 +499,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
 
     public generateScopedId(path: string, isShared: boolean): UUID {
         // Prefix the path with scope before generating UUID to ensure different IDs for shared vs private
-        const scope = isShared ? KnowledgeScope.SHARED : KnowledgeScope.PRIVATE;
+        const scope = isShared ? "shared" : "private";
         const scopedPath = `${scope}-${path}`;
         return stringToUuid(scopedPath);
     }
