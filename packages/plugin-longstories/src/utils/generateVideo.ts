@@ -16,28 +16,37 @@ import {
 import { validateLongStoriesConfig } from "../environment.ts";
 
 const POLLING_INTERVAL = 5000; // 5 seconds
-const MAX_POLLING_ATTEMPTS = 30; // 2.5 minutes total
+const MAX_POLLING_ATTEMPTS = 60; // 5 minutes total
 
 interface CreateVideoParams {
-    effects: {
+    effectsConfig: {
         transition: TransitionEffectEnum;
         floating: boolean;
     };
-    motionEnabled?: boolean;
+    motionConfig?: {
+        enabled: boolean;
+        strength: number;
+    };
     quality?: "low" | "medium" | "high";
+    directorNotes?: string;
 }
 
 export async function createVideo(
     runtime: IAgentRuntime,
-    prompt: string,
+    script: string,
     params: CreateVideoParams
 ): Promise<VideoCreationResponse> {
-    const { quality = "medium", effects, motionEnabled = false } = params;
+    const {
+        quality = "medium",
+        directorNotes,
+        effectsConfig,
+        motionConfig,
+    } = params;
 
     const videoParams: VideoRequestSchemaType = VideoRequestSchema.parse({
-        prompt,
+        script,
         shortRequestEnhancer: false,
-        effectsConfig: effects,
+        effectsConfig,
         quality,
         imageConfig: {
             model: "flux_lora",
@@ -52,10 +61,7 @@ export async function createVideo(
             style: "no_style",
             targetLengthInWords: 55,
         },
-        motionConfig: {
-            enabled: motionEnabled,
-            strength: 3,
-        },
+        motionConfig,
         voiceoverConfig: {
             enabled: true,
             voiceId: "YYHkBdgrAwQWIaH6m2ai",
@@ -65,6 +71,7 @@ export async function createVideo(
             captionsPosition: "bottom",
             captionsStyle: "manuscripts",
         },
+        directorNotes,
     } as VideoRequestSchemaType);
 
     try {
